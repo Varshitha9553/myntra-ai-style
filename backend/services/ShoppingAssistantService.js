@@ -162,7 +162,7 @@ Return ONLY a valid JSON object in this format:
 }`;
 
     if (!GROQ_API_KEY) {
-      return this.getStaticFallbackAnalysis(product);
+      return this.getStaticFallbackAnalysis(product, wardrobeItems);
     }
 
     try {
@@ -191,7 +191,7 @@ Return ONLY a valid JSON object in this format:
       return JSON.parse(content.trim());
     } catch (err) {
       console.error('[ShoppingAssistantService] Groq compatibility analysis failed:', err.message);
-      return this.getStaticFallbackAnalysis(product);
+      return this.getStaticFallbackAnalysis(product, wardrobeItems);
     }
   }
 
@@ -233,16 +233,114 @@ Return ONLY a valid JSON object in this format:
     };
   }
 
-  getStaticFallbackAnalysis(product) {
+  getStaticFallbackAnalysis(product, wardrobeItems = []) {
     const category = product.category || 'Topwear';
-    const score = 72;
+    const color = product.color || 'Neutral';
+    
+    // 1. Calculate duplicates
+    const duplicates = wardrobeItems.filter(item => 
+      String(item.category || '').toLowerCase() === category.toLowerCase() &&
+      String(item.color || '').toLowerCase() === color.toLowerCase()
+    );
+
+    // 2. Calculate matches in complementary categories
+    const productCat = category.toLowerCase();
+    let compCategories = [];
+    if (productCat.includes('topwear') || productCat.includes('shirt') || productCat.includes('t-shirt')) {
+      compCategories = ['bottomwear', 'footwear'];
+    } else if (productCat.includes('bottomwear') || productCat.includes('pant') || productCat.includes('jeans') || productCat.includes('trouser') || productCat.includes('chino')) {
+      compCategories = ['topwear', 'footwear'];
+    } else if (productCat.includes('footwear') || productCat.includes('shoe') || productCat.includes('sneaker')) {
+      compCategories = ['topwear', 'bottomwear'];
+    } else {
+      compCategories = ['topwear', 'bottomwear', 'footwear'];
+    }
+
+    const complementaryItems = wardrobeItems.filter(item => 
+      compCategories.includes(String(item.category || '').toLowerCase())
+    );
+
+    // 3. Compute dynamic compatibility score
+    let score = 65;
+    
+    // Add points for complementary items (versatility)
+    score += Math.min(complementaryItems.length * 4, 20);
+
+    // Color coordination bonus
+    const isNeutral = ['black', 'white', 'grey', 'navy', 'beige', 'cream'].includes(color.toLowerCase());
+    if (isNeutral) {
+      score += 8;
+    } else {
+      const hasNeutralCompanion = wardrobeItems.some(item => 
+        ['black', 'white', 'grey', 'navy', 'beige', 'cream'].includes(String(item.color || '').toLowerCase())
+      );
+      if (hasNeutralCompanion) score += 5;
+    }
+
+    // Deduct points for high duplicates (redundancy)
+    if (duplicates.length > 0) {
+      score -= Math.min(duplicates.length * 8, 25);
+    }
+
+    // Keep score bounded between 40 and 95
+    score = Math.max(40, Math.min(95, score));
+
+    // 4. Compute dynamic confidence based on wardrobe context
+    let confidence = 82 + Math.min(wardrobeItems.length, 8) + (score % 5);
+    confidence = Math.min(96, Math.max(80, confidence));
+
+    // 5. Determine recommendation level
+    let buyRecommendation = 'Good Addition';
+    if (score >= 80) {
+      buyRecommendation = 'Highly Recommended';
+    } else if (score < 55) {
+      buyRecommendation = 'Not Recommended';
+    }
+
+    // 6. Wardrobe Gap
+    let wardrobeGap = 'None';
+    if (duplicates.length === 0) {
+      wardrobeGap = `${color} ${category}`;
+    } else {
+      wardrobeGap = `None (Already have ${duplicates.length} similar)`;
+    }
+
+    // 7. Outfit Potential
+    const topsCount = wardrobeItems.filter(item => String(item.category || '').toLowerCase().includes('top')).length;
+    const bottomsCount = wardrobeItems.filter(item => String(item.category || '').toLowerCase().includes('bottom')).length;
+    
+    let potentialCombinations = 0;
+    if (productCat.includes('top')) {
+      potentialCombinations = bottomsCount;
+    } else if (productCat.includes('bottom')) {
+      potentialCombinations = topsCount;
+    } else if (productCat.includes('footwear')) {
+      potentialCombinations = Math.min(topsCount, bottomsCount);
+    } else {
+      potentialCombinations = 2;
+    }
+    
+    const outfitPotential = potentialCombinations > 0 
+      ? `Can create ${potentialCombinations} additional outfit combination${potentialCombinations > 1 ? 's' : ''}.`
+      : 'Can create 1 new combination with closet items.';
+
+    // 8. Style Reason
+    let reason = '';
+    if (buyRecommendation === 'Highly Recommended') {
+      reason = `This ${color.toLowerCase()} ${category.toLowerCase()} is highly versatile and fits perfectly into your wardrobe. It pairs easily with your existing ${complementaryItems.slice(0, 2).map(i => i.name).join(', ') || 'closet items'} with zero overlap.`;
+    } else if (buyRecommendation === 'Not Recommended') {
+      reason = `You already have ${duplicates.length} similar ${color.toLowerCase()} ${category.toLowerCase()}${duplicates.length > 1 ? 's' : ''} in your closet. Adding another might be redundant and won't increase your outfit versatility.`;
+    } else {
+      reason = `A solid ${color.toLowerCase()} option that coordinates well with your current wardrobe. It complements your style and provides reliable pairing options.`;
+    }
+
     return {
-      buyRecommendation: 'Good Addition',
+      buyRecommendation,
       compatibilityScore: score,
-      confidence: 85,
-      reason: `This ${product.color || 'neutral'} ${category.toLowerCase()} is a solid pick that matches multiple standard items in your closet.`,
-      wardrobeGap: `${product.color || 'Neutral'} ${category}`,
-      outfitPotential: 'Can create 3 additional outfit combinations.',
+      confidence,
+      reason,
+      wardrobeGap,
+      outfitPotential
     };
   }
 }

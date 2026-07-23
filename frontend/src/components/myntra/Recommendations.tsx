@@ -519,7 +519,7 @@ export function Recommendations() {
                       </div>
                       <div className="space-y-1.5 pt-1">
                         <a
-                          href={getMyntraCategoryUrl(item.category)}
+                          href={item.myntraUrl || getMyntraCategoryUrl(item.category)}
                           target="_blank"
                           rel="noreferrer"
                           className="w-full block text-center py-2 rounded-xl bg-primary/5 hover:bg-primary/10 text-primary text-xs font-bold transition-all"

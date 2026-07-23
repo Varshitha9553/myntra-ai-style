@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "@tanstack/react-router";
 
 export function HeroBanner() {
   return (
@@ -31,30 +32,49 @@ export function HeroBanner() {
               </div>
             </motion.div>
           </a>
-          <div className="grid grid-rows-2 gap-4">
+          <div className="grid grid-rows-3 gap-3 md:h-[420px]">
             {[
-              { title: "New Arrivals", sub: "Fresh drops daily", img: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=600&q=80", url: "https://www.myntra.com/shop/new-arrivals" },
-              { title: "Studio", sub: "Trending styles", img: "https://images.unsplash.com/photo-1445205170230-053b83016050?w=600&q=80", url: "https://www.myntra.com/studio/home" },
-            ].map((b) => (
-              <a
-                key={b.title}
-                href={b.url}
-                target="_blank"
-                rel="noreferrer"
-                className="block"
-              >
+              { title: "New Arrivals", sub: "Fresh drops daily", img: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=600&q=80", url: "https://www.myntra.com/shop/new-arrivals", isExternal: true },
+              { title: "Smart Travel Packing", sub: "Curate travel capsules", img: "https://images.unsplash.com/photo-1445205170230-053b83016050?w=600&q=80", url: "/travel-packing", isExternal: false },
+              { title: "Style Planner ", sub: "Plan weekly weather looks", img: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&q=80", url: "/style-planner", isExternal: false },
+            ].map((b) => {
+              const cardContent = (
                 <motion.div
-                  whileHover={{ y: -4 }}
-                  className="rounded-2xl overflow-hidden relative h-[130px] md:h-[200px] group cursor-pointer"
+                  whileHover={{ y: -2 }}
+                  className="rounded-2xl overflow-hidden relative h-[100px] md:h-[128px] group cursor-pointer shadow-sm border border-border/20"
                 >
                   <img src={b.img} alt={b.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent p-5 flex flex-col justify-center">
-                    <h3 className="text-white text-xl font-bold">{b.title}</h3>
-                    <p className="text-white/80 text-sm">{b.sub}</p>
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent p-4 flex flex-col justify-center">
+                    <h3 className="text-white text-base font-bold leading-tight">{b.title}</h3>
+                    <p className="text-white/80 text-xs mt-0.5">{b.sub}</p>
                   </div>
                 </motion.div>
-              </a>
-            ))}
+              );
+
+              if (b.isExternal) {
+                return (
+                  <a
+                    key={b.title}
+                    href={b.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block"
+                  >
+                    {cardContent}
+                  </a>
+                );
+              }
+
+              return (
+                <Link
+                  key={b.title}
+                  to={b.url}
+                  className="block"
+                >
+                  {cardContent}
+                </Link>
+              );
+            })}
           </div>
         </div>
       </div>

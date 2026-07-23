@@ -32,6 +32,26 @@ class WishlistService {
   async create(userId, { productName, productImage, brand, price, myntraUrl }) {
     const connection = await createConnection();
     try {
+      // 1. Check for duplicates in wishlist (case-insensitive name check or url check)
+      const dupCheck = await connection.execute(
+        `SELECT wishlist_id FROM wishlist 
+         WHERE user_id = :userId AND (LOWER(TRIM(product_name)) = LOWER(TRIM(:productName)) OR (myntra_url = :myntraUrl AND myntra_url IS NOT NULL))`,
+        { userId, productName, myntraUrl: myntraUrl || '' }
+      );
+      if (dupCheck.rows && dupCheck.rows.length > 0) {
+        const idVal = dupCheck.rows[0].WISHLIST_ID ?? dupCheck.rows[0].wishlist_id;
+        return { id: idVal, alreadyExists: true };
+      }
+
+      // 2. Do not allow adding to wishlist if the user already bought/owns this item in their wardrobe
+      const wardrobeCheck = await connection.execute(
+        `SELECT id FROM wardrobe_items WHERE user_id = :userId AND LOWER(TRIM(name)) = LOWER(TRIM(:productName))`,
+        { userId, productName }
+      );
+      if (wardrobeCheck.rows && wardrobeCheck.rows.length > 0) {
+        return { id: -1, alreadyOwned: true };
+      }
+
       const result = await connection.execute(
         `INSERT INTO wishlist (user_id, product_name, product_image, brand, price, myntra_url)
          VALUES (:userId, :productName, :productImage, :brand, :price, :myntraUrl)

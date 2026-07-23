@@ -13,6 +13,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('myntra_token');
+        localStorage.removeItem('myntra_user_name');
+        localStorage.removeItem('myntra_user_email');
+        window.location.href = '/login';
+      }
+    }
     const errorText = await response.text();
     throw new Error(errorText || 'Request failed');
   }
@@ -66,6 +74,13 @@ export async function uploadWardrobeItem(formData: FormData) {
 
 export async function addWardrobeItemDirect(payload: any) {
   return request<any>('/api/wardrobe/direct', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getTravelCapsule(payload: { destination: string; duration: number; occasion: string }) {
+  return request<any>('/api/wardrobe/travel-packing', {
     method: 'POST',
     body: JSON.stringify(payload),
   });

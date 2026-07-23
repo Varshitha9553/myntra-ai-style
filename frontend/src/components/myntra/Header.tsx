@@ -1,4 +1,4 @@
-import { Search, Heart, User, Sparkles, LogOut } from "lucide-react";
+import { Search, Heart, User, Sparkles, LogOut, Briefcase, Calendar } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 
 const navLinks = [
@@ -9,7 +9,8 @@ const navLinks = [
   { label: "BEAUTY", href: "https://www.myntra.com/shop/beauty" },
   { label: "STUDIO", href: "https://www.myntra.com/studio/home" },
   { label: "AI CLOSET", href: "/outfit-generator" },
-  { label: "MY WARDROBE", href: "/closet" },
+  { label: "MY WARDROBE", href: "/closet" }
+  
 ];
 
 export function Header() {
@@ -33,10 +34,12 @@ export function Header() {
           {navLinks.map((link) => {
             const isAi = link.label === "AI CLOSET";
             const isWardrobe = link.label === "MY WARDROBE";
+            const isTravel = link.label === "TRAVEL PACKING";
+            const isPlanner = link.label === "STYLE PLANNER";
             const isExternal = link.href.startsWith("http");
 
             const className = `text-[13px] font-bold tracking-wide transition-colors relative group ${
-              isAi || isWardrobe ? "text-primary font-black" : "text-myntra-dark hover:text-primary"
+              isAi || isWardrobe || isTravel || isPlanner ? "text-primary font-black" : "text-myntra-dark hover:text-primary"
             }`;
 
             if (isExternal) {
@@ -61,6 +64,8 @@ export function Header() {
                 className={className}
               >
                 {isAi && <Sparkles className="inline w-3.5 h-3.5 mr-1 -mt-0.5" />}
+                {isTravel && <Briefcase className="inline w-3.5 h-3.5 mr-1 -mt-0.5" />}
+                {isPlanner && <Calendar className="inline w-3.5 h-3.5 mr-1 -mt-0.5" />}
                 {link.label}
                 <span className="absolute -bottom-1.5 left-0 h-0.5 w-0 bg-primary transition-all group-hover:w-full" />
               </Link>

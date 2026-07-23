@@ -15,45 +15,69 @@ function computeSimilarity(product, item) {
   if (product.name && item.name && normalize(product.name) === normalize(item.name)) {
     return 100;
   }
+  const normProdCat = normalize(product.category);
+  const normItemCat = normalize(item.category);
+  
+  // If categories are different, they are different products (max 15% similarity)
+  if (normProdCat !== normItemCat) {
+    return 10;
+  }
+
+  const prodColor = normalize(product.color);
+  const itemColor = normalize(item.color);
+  const prodOccasion = normalize(product.occasion || 'casual');
+  const itemOccasion = normalize(item.occasion || 'casual');
+  
+  const colorMatch = prodColor && prodColor === itemColor;
+  const occasionMatch = prodOccasion && prodOccasion === itemOccasion;
+
   const productWords = extractWords(product.name || '');
   const itemWords = extractWords(item.name || '');
-  const union = new Set([...productWords, ...itemWords]);
-  const shared = productWords.filter((word) => itemWords.includes(word));
-  const textScore = union.size ? (shared.length / union.size) * 60 : 0;
+  const sharedWords = productWords.filter((word) => itemWords.includes(word));
 
-  let score = Math.round(textScore);
-  const catMatch = normalize(product.category) && normalize(product.category) === normalize(item.category);
-  const colorMatch = normalize(product.color) && normalize(product.color) === normalize(item.color);
-  const patternMatch = normalize(product.pattern) && normalize(product.pattern) === normalize(item.pattern);
-  const occasionMatch = normalize(product.occasion) && normalize(product.occasion) === normalize(item.occasion);
+  const fashionKeywords = ['shirt', 't-shirt', 'tee', 'jeans', 'pant', 'trouser', 'chino', 'shorts', 'skirt', 'shoe', 'sneaker', 'sandal', 'boot', 'jacket', 'coat', 'sweater', 'hoodie', 'dress', 'saree', 'kurta', 'socks', 'watch', 'belt', 'bag'];
+  const prodKeywords = productWords.filter(w => fashionKeywords.includes(w));
+  const itemKeywords = itemWords.filter(w => fashionKeywords.includes(w));
 
-  if (catMatch) score += 20;
-  if (colorMatch) score += 25;
-  if (patternMatch) score += 15;
-  if (occasionMatch) score += 10;
-
-  if (normalize(product.brand) && normalize(product.brand) === normalize(item.brand)) {
-    score += 10;
-  }
-  if (product.name && item.name && normalize(product.name).includes(normalize(item.name))) {
-    score = Math.max(score, 70);
-  }
-  if (product.name && item.name && normalize(item.name).includes(normalize(product.name))) {
-    score = Math.max(score, 70);
-  }
-
-  // Feature-based baselines for robust fallback comparison
-  if (catMatch && colorMatch) {
-    score = Math.max(score, 70); 
-    if (patternMatch) {
-      score = Math.max(score, 85); 
-      if (occasionMatch) {
-        score = Math.max(score, 92); 
-      }
+  let isSameProduct = false;
+  if (sharedWords.length > 0) {
+    isSameProduct = true;
+  } else {
+    const sharedKeywords = prodKeywords.filter(w => itemKeywords.includes(w));
+    if (sharedKeywords.length > 0) {
+      isSameProduct = true;
     }
   }
 
-  return Math.min(100, score);
+  // High Risk or Duplicate (similarity >= 70) only when color, category, occasion match and they are same product type
+  if (colorMatch && occasionMatch && isSameProduct) {
+    let score = 75;
+    if (sharedWords.length > 1) {
+      score = Math.min(100, 75 + sharedWords.length * 5);
+    }
+    return score;
+  }
+
+  // Base score calculation for matching category + other features
+  let score = 20; // base for matching category
+  if (colorMatch) score += 20;
+  if (occasionMatch) score += 10;
+  if (normalize(product.pattern) && normalize(product.pattern) === normalize(item.pattern)) {
+    score += 10;
+  }
+  if (normalize(product.brand) && normalize(product.brand) === normalize(item.brand)) {
+    score += 10;
+  }
+  if (isSameProduct) {
+    score += 15;
+  }
+
+  // If they are not the same type of product, cap similarity below High Risk (max 55%)
+  if (!isSameProduct) {
+    score = Math.min(55, score);
+  }
+
+  return Math.min(95, score);
 }
 
 function getRecommendation(similarity) {

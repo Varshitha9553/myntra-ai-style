@@ -70,8 +70,8 @@ const parseMyntraUrl = (url: string) => {
     const lowerUrl = url.toLowerCase();
     if (lowerUrl.includes("pant") || lowerUrl.includes("trousers") || lowerUrl.includes("jeans") || lowerUrl.includes("shorts") || lowerUrl.includes("skirt")) {
       category = "Bottomwear";
-    } else if (lowerUrl.includes("shoe") || lowerUrl.includes("sneakers") || lowerUrl.includes("footwear") || lowerUrl.includes("sandals") || lowerUrl.includes("clog") || lowerUrl.includes("slider") || lowerUrl.includes("flip-flop")) {
-      category = "Accessories";
+    } else if (lowerUrl.includes("shoe") || lowerUrl.includes("sneaker") || lowerUrl.includes("footwear") || lowerUrl.includes("sandal") || lowerUrl.includes("clog") || lowerUrl.includes("slider") || lowerUrl.includes("flip-flop")) {
+      category = "Footwear";
     } else if (lowerUrl.includes("jacket") || lowerUrl.includes("coat") || lowerUrl.includes("sweater") || lowerUrl.includes("shrug")) {
       category = "Outerwear";
     } else if (lowerUrl.includes("dress") || lowerUrl.includes("saree") || lowerUrl.includes("kurta")) {
@@ -99,7 +99,7 @@ const parseMyntraUrl = (url: string) => {
     return {
       name,
       category,
-      price: Math.floor(Math.random() * 1500) + 999,
+      price: 1499,
       imageUrl: matchedImage,
       reason: "Custom parsed product from Myntra URL."
     };
@@ -109,15 +109,67 @@ const parseMyntraUrl = (url: string) => {
 };
 
 export function ShoppingAssistant() {
-  const [product, setProduct] = useState<any | null>(null);
-  const [analysis, setAnalysis] = useState<any | null>(null);
+  const [product, setProductState] = useState<any | null>(() => {
+    if (typeof window !== "undefined") {
+      const cached = sessionStorage.getItem("shopping_product");
+      return cached ? JSON.parse(cached) : null;
+    }
+    return null;
+  });
+  const [analysis, setAnalysisState] = useState<any | null>(() => {
+    if (typeof window !== "undefined") {
+      const cached = sessionStorage.getItem("shopping_analysis");
+      return cached ? JSON.parse(cached) : null;
+    }
+    return null;
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [wishlistSaved, setWishlistSaved] = useState(false);
+  const [wishlistSaved, setWishlistSavedState] = useState(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("shopping_wishlist_saved") === "true";
+    }
+    return false;
+  });
   
-  const [urlInput, setUrlInput] = useState("");
+  const [urlInput, setUrlInputState] = useState(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("shopping_url_input") || "";
+    }
+    return "";
+  });
   const [imageInput, setImageInput] = useState("");
   const [urlError, setUrlError] = useState<string | null>(null);
+
+  const setProduct = (p: any) => {
+    setProductState(p);
+    if (typeof window !== "undefined") {
+      if (p) sessionStorage.setItem("shopping_product", JSON.stringify(p));
+      else sessionStorage.removeItem("shopping_product");
+    }
+  };
+
+  const setAnalysis = (a: any) => {
+    setAnalysisState(a);
+    if (typeof window !== "undefined") {
+      if (a) sessionStorage.setItem("shopping_analysis", JSON.stringify(a));
+      else sessionStorage.removeItem("shopping_analysis");
+    }
+  };
+
+  const setWishlistSaved = (val: boolean) => {
+    setWishlistSavedState(val);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("shopping_wishlist_saved", String(val));
+    }
+  };
+
+  const setUrlInput = (val: string) => {
+    setUrlInputState(val);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("shopping_url_input", val);
+    }
+  };
 
   const getMyntraUrl = (name: string) => {
     return `https://www.myntra.com/${encodeURIComponent(name)}`;
@@ -140,18 +192,19 @@ export function ShoppingAssistant() {
     setError(null);
     setWishlistSaved(false);
     
-    // Set immediate loading preview product details if searching a URL
+    let parsedProduct = null;
     if (myntraUrl) {
       const parsed = parseMyntraUrl(myntraUrl);
       if (parsed) {
         setProduct(parsed);
+        parsedProduct = parsed;
       } else {
         setProduct({ name: "Fetching Myntra Product...", category: "Accessories", price: 0, imageUrl: "" });
       }
     }
 
     try {
-      let activeProduct = selected;
+      let activeProduct = selected || parsedProduct;
       if (!activeProduct && !myntraUrl) {
         const analytics = await getAnalytics();
         const featured = analytics.featuredProduct;
@@ -174,7 +227,9 @@ export function ShoppingAssistant() {
   };
 
   useEffect(() => {
-    loadAnalysis();
+    if (typeof window !== "undefined" && !sessionStorage.getItem("shopping_product")) {
+      loadAnalysis();
+    }
   }, []);
 
   const handleSelectProduct = (p: any) => {
@@ -201,7 +256,7 @@ export function ShoppingAssistant() {
         productImage: product.imageUrl,
         brand: product.brand || product.category || 'Myntra Pick',
         price: product.price,
-        myntraUrl: getMyntraUrl(product.name)
+        myntraUrl: product.myntraUrl || getMyntraUrl(product.name)
       });
       setWishlistSaved(true);
       alert(`"${product.name}" added to Wishlist!`);
@@ -425,7 +480,7 @@ export function ShoppingAssistant() {
                       </a>
                     )}
                     <a
-                      href={getMyntraUrl(product.name)}
+                      href={product.myntraUrl || getMyntraUrl(product.name)}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-secondary hover:bg-secondary/80 text-myntra-dark text-xs font-bold transition-all border border-border"

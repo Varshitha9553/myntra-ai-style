@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WishlistRouteImport } from './routes/wishlist'
+import { Route as TravelPackingRouteImport } from './routes/travel-packing'
+import { Route as StylePlannerRouteImport } from './routes/style-planner'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as OutfitGeneratorRouteImport } from './routes/outfit-generator'
@@ -20,6 +22,16 @@ import { Route as IndexRouteImport } from './routes/index'
 const WishlistRoute = WishlistRouteImport.update({
   id: '/wishlist',
   path: '/wishlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TravelPackingRoute = TravelPackingRouteImport.update({
+  id: '/travel-packing',
+  path: '/travel-packing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StylePlannerRoute = StylePlannerRouteImport.update({
+  id: '/style-planner',
+  path: '/style-planner',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RegisterRoute = RegisterRouteImport.update({
@@ -60,6 +72,8 @@ export interface FileRoutesByFullPath {
   '/outfit-generator': typeof OutfitGeneratorRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
+  '/style-planner': typeof StylePlannerRoute
+  '/travel-packing': typeof TravelPackingRoute
   '/wishlist': typeof WishlistRoute
 }
 export interface FileRoutesByTo {
@@ -69,6 +83,8 @@ export interface FileRoutesByTo {
   '/outfit-generator': typeof OutfitGeneratorRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
+  '/style-planner': typeof StylePlannerRoute
+  '/travel-packing': typeof TravelPackingRoute
   '/wishlist': typeof WishlistRoute
 }
 export interface FileRoutesById {
@@ -79,6 +95,8 @@ export interface FileRoutesById {
   '/outfit-generator': typeof OutfitGeneratorRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
+  '/style-planner': typeof StylePlannerRoute
+  '/travel-packing': typeof TravelPackingRoute
   '/wishlist': typeof WishlistRoute
 }
 export interface FileRouteTypes {
@@ -90,6 +108,8 @@ export interface FileRouteTypes {
     | '/outfit-generator'
     | '/profile'
     | '/register'
+    | '/style-planner'
+    | '/travel-packing'
     | '/wishlist'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -99,6 +119,8 @@ export interface FileRouteTypes {
     | '/outfit-generator'
     | '/profile'
     | '/register'
+    | '/style-planner'
+    | '/travel-packing'
     | '/wishlist'
   id:
     | '__root__'
@@ -108,6 +130,8 @@ export interface FileRouteTypes {
     | '/outfit-generator'
     | '/profile'
     | '/register'
+    | '/style-planner'
+    | '/travel-packing'
     | '/wishlist'
   fileRoutesById: FileRoutesById
 }
@@ -118,6 +142,8 @@ export interface RootRouteChildren {
   OutfitGeneratorRoute: typeof OutfitGeneratorRoute
   ProfileRoute: typeof ProfileRoute
   RegisterRoute: typeof RegisterRoute
+  StylePlannerRoute: typeof StylePlannerRoute
+  TravelPackingRoute: typeof TravelPackingRoute
   WishlistRoute: typeof WishlistRoute
 }
 
@@ -128,6 +154,20 @@ declare module '@tanstack/react-router' {
       path: '/wishlist'
       fullPath: '/wishlist'
       preLoaderRoute: typeof WishlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/travel-packing': {
+      id: '/travel-packing'
+      path: '/travel-packing'
+      fullPath: '/travel-packing'
+      preLoaderRoute: typeof TravelPackingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/style-planner': {
+      id: '/style-planner'
+      path: '/style-planner'
+      fullPath: '/style-planner'
+      preLoaderRoute: typeof StylePlannerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/register': {
@@ -182,6 +222,8 @@ const rootRouteChildren: RootRouteChildren = {
   OutfitGeneratorRoute: OutfitGeneratorRoute,
   ProfileRoute: ProfileRoute,
   RegisterRoute: RegisterRoute,
+  StylePlannerRoute: StylePlannerRoute,
+  TravelPackingRoute: TravelPackingRoute,
   WishlistRoute: WishlistRoute,
 }
 export const routeTree = rootRouteImport

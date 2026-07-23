@@ -285,6 +285,24 @@ class WardrobeService {
     try {
       const connection = await createConnection();
       try {
+        // Check for duplicates in wardrobe (case-insensitive name check)
+        const dupCheck = await connection.execute(
+          `SELECT id FROM wardrobe_items WHERE user_id = :userId AND LOWER(TRIM(name)) = LOWER(TRIM(:name))`,
+          { userId, name: payload.name }
+        );
+        if (dupCheck.rows && dupCheck.rows.length > 0) {
+          const existingId = dupCheck.rows[0].ID ?? dupCheck.rows[0].id;
+          
+          // Delete matching item from wishlist since it's already in the wardrobe
+          await connection.execute(
+            `DELETE FROM wishlist WHERE user_id = :userId AND (LOWER(TRIM(product_name)) = LOWER(TRIM(:name)) OR (myntra_url = :myntraUrl AND myntra_url IS NOT NULL))`,
+            { userId, name: payload.name, myntraUrl: payload.imageUrl || '' }
+          );
+          await connection.commit();
+
+          return { id: existingId, alreadyExists: true };
+        }
+
         const result = await connection.execute(
           `INSERT INTO wardrobe_items (user_id, name, image_url, category, color, occasion, season, brand, pattern, ai_tags, notes, favorite)
            VALUES (:userId, :name, :imageUrl, :category, :color, :occasion, :season, :brand, :pattern, :aiTags, :notes, :favorite)
@@ -305,6 +323,13 @@ class WardrobeService {
             itemId: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
           }
         );
+
+        // Delete purchased item from wishlist if it exists
+        await connection.execute(
+          `DELETE FROM wishlist WHERE user_id = :userId AND (LOWER(TRIM(product_name)) = LOWER(TRIM(:name)) OR (myntra_url = :myntraUrl AND myntra_url IS NOT NULL))`,
+          { userId, name: payload.name, myntraUrl: payload.imageUrl || '' }
+        );
+
         // Personalization: Clear recommendation cache on wardrobe updates
         await connection.execute(`DELETE FROM recommendations WHERE user_id = :userId`, { userId });
         await connection.commit();
@@ -314,6 +339,12 @@ class WardrobeService {
       }
     } catch (error) {
       console.warn('Oracle unavailable, storing wardrobe item in fallback store.', error.message);
+      const exists = getFallbackItems(userId).find(
+        (item) => (item.name || '').toLowerCase().trim() === (payload.name || '').toLowerCase().trim()
+      );
+      if (exists) {
+        return { id: exists.id, alreadyExists: true };
+      }
       return { id: toFallbackItem(userId, payload).id };
     }
   }

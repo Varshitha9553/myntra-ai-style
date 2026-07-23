@@ -12,7 +12,7 @@ async function fetchMyntraDetails(url) {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.5',
       },
-      timeout: 10000
+      timeout: 2500
     });
     
     if (res.status !== 200) return null;
@@ -48,9 +48,93 @@ async function fetchMyntraDetails(url) {
                        html.match(/"brand"\s*:\s*"([^"]+)"/i);
     const brand = brandMatch ? brandMatch[1].trim() : null;
 
-    return { name, imageUrl, color, brand };
+    const priceMatch = html.match(/"price"\s*:\s*"?(\d+)"?/i) || 
+                       html.match(/"discountedPrice"\s*:\s*"?(\d+)"?/i) ||
+                       html.match(/"sellingPrice"\s*:\s*"?(\d+)"?/i);
+    const price = priceMatch ? parseInt(priceMatch[1]) : null;
+
+    const mrpMatch = html.match(/"mrp"\s*:\s*"?(\d+)"?/i);
+    const mrp = mrpMatch ? parseInt(mrpMatch[1]) : null;
+
+    return { name, imageUrl, color, brand, price, mrp };
   } catch (err) {
     console.error('[Scraper] Failed to fetch details from Myntra URL:', err.message);
+    return null;
+  }
+}
+
+function parseMyntraUrlFallback(url) {
+  try {
+    const urlObj = new URL(url);
+    const pathParts = urlObj.pathname.split("/").filter(Boolean);
+    if (pathParts.length === 0) return null;
+
+    let slug = "";
+    for (const part of pathParts) {
+      if (part.includes("-") && !/^\d+$/.test(part)) {
+        slug = part;
+        break;
+      }
+    }
+
+    if (!slug) {
+      slug = pathParts[0];
+    }
+
+    const name = slug
+      .split("-")
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+
+    let brand = 'Myntra Pick';
+    const brandIdx = pathParts.indexOf(slug) - 1;
+    if (brandIdx >= 0) {
+      brand = pathParts[brandIdx].charAt(0).toUpperCase() + pathParts[brandIdx].slice(1);
+    }
+
+    let category = "Bottomwear";
+    const lowerUrl = url.toLowerCase();
+    if (lowerUrl.includes("pant") || lowerUrl.includes("trousers") || lowerUrl.includes("jeans") || lowerUrl.includes("shorts") || lowerUrl.includes("skirt") || lowerUrl.includes("chinos")) {
+      category = "Bottomwear";
+    } else if (lowerUrl.includes("shoe") || lowerUrl.includes("sneaker") || lowerUrl.includes("footwear") || lowerUrl.includes("sandal") || lowerUrl.includes("canvas") || lowerUrl.includes("lace-up") || lowerUrl.includes("slip-on") || lowerUrl.includes("flip-flop") || lowerUrl.includes("slider") || lowerUrl.includes("clog") || lowerUrl.includes("boot") || lowerUrl.includes("heel")) {
+      category = "Footwear";
+    } else if (lowerUrl.includes("jacket") || lowerUrl.includes("coat") || lowerUrl.includes("sweater") || lowerUrl.includes("shrug") || lowerUrl.includes("hoodie")) {
+      category = "Outerwear";
+    } else if (lowerUrl.includes("dress") || lowerUrl.includes("saree") || lowerUrl.includes("kurta")) {
+      category = "Dress";
+    } else if (lowerUrl.includes("watch") || lowerUrl.includes("belt") || lowerUrl.includes("bag") || lowerUrl.includes("accessories")) {
+      category = "Accessories";
+    }
+
+    let color = 'Neutral';
+    const colors = ['white', 'black', 'blue', 'red', 'green', 'yellow', 'grey', 'navy', 'pink', 'beige', 'brown', 'olive'];
+    for (const c of colors) {
+      if (lowerUrl.includes(c)) {
+        color = c.charAt(0).toUpperCase() + c.slice(1);
+        break;
+      }
+    }
+
+    let matchedImage = "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600&q=80";
+    if (category === "Topwear") {
+      matchedImage = "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=600&q=80";
+    } else if (category === "Bottomwear") {
+      matchedImage = "https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=600&q=80";
+    } else if (category === "Footwear") {
+      matchedImage = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&q=80";
+    } else if (category === "Outerwear") {
+      matchedImage = "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=600&q=80";
+    }
+
+    return {
+      name,
+      category,
+      color,
+      brand,
+      price: 1499,
+      imageUrl: matchedImage
+    };
+  } catch (e) {
     return null;
   }
 }
@@ -85,7 +169,10 @@ export async function analyzeShoppingProduct(req, res, next) {
     let product = null;
 
     if (myntraUrl) {
-      const scraped = await fetchMyntraDetails(myntraUrl);
+      let scraped = await fetchMyntraDetails(myntraUrl);
+      if (!scraped || !scraped.imageUrl) {
+        scraped = parseMyntraUrlFallback(myntraUrl);
+      }
       if (scraped && scraped.imageUrl) {
         let category = 'Topwear';
         const lowerUrl = myntraUrl.toLowerCase();
@@ -104,7 +191,8 @@ export async function analyzeShoppingProduct(req, res, next) {
         product = {
           name: scraped.name || 'Pasted Myntra Product',
           category,
-          price: Math.floor(Math.random() * 1500) + 999,
+          price: scraped.price || (Math.floor(Math.random() * 1500) + 999),
+          mrp: scraped.mrp || null,
           imageUrl: scraped.imageUrl,
           color: scraped.color || null,
           brand: scraped.brand || null,
